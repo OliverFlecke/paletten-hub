@@ -45,11 +45,18 @@ def handle_temperature_change(message):
     except Error as e:
         print(e)
 
+def handle_active_change(message):
+    global active
+    active = message.payload == b'true'
+    print(f'Automatic temperature control is now {"active" if active else "disabled"}')
+
 def handle(client, userdata, message):
     if message.topic == 'temperature/set':
         handle_set(message)
     elif message.topic == 'temperature/inside':
         handle_temperature_change(message)
+    elif message.topic == 'temperature/auto':
+        handle_active_change(message)
 
-subscribe.callback(handle, ['temperature/inside', 'temperature/set'], hostname=url)
+subscribe.callback(handle, ['temperature/inside', 'temperature/set', 'temperature/auto'], hostname=url)
 
