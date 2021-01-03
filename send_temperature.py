@@ -9,6 +9,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Send temperature data')
 parser.add_argument('place', type=str)
 parser.add_argument('pin', type=int)
+parser.add_argument('-f', '--force', default=False, action='store_true')
 
 args = parser.parse_args()
 
@@ -31,8 +32,8 @@ print(f'{args.place} - Temperature: {temperature:0.1f} \tHumidity: {humidity:0.1
 with open(history_file, 'a') as history:
     history.write(f'{datetime.now()}: {temperature}, {humidity}\n')
 
-if last_temp != temperature:
+if args.force or last_temp != temperature:
     client.publish(f'temperature/{args.place}', f'{temperature:0.1f}', retain=True)
-if last_humidity != humidity:
+if args.force or last_humidity != humidity:
     client.publish(f'humidity/{args.place}', f'{humidity:0.1f}', retain=True)
 
