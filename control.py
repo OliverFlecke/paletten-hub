@@ -12,29 +12,44 @@ client.connect(url, 1883, 60)
 
 desired_temp = None
 temperature = None
+active = True
 
-def handle(client, userdata, message):
-    global desired_temp
-    global temperature
-    try:
-        if message.topic == 'temperature/set':
-            desired_temp = float(message.payload)
-            print(f'Got desired temperature: {desired_temp}')
-        elif message.topic == 'temperature/inside':
-            temperature = float(message.payload)
-            print(f'Current temperature {temperature}')
-
-        if not temperature or not desired_temp: return
-
-        if temperature < desired_temp: state = 'on'
-        else: state = 'off'
-
-        print(f'Setting state to {state}')
-    except Error as e:
-        print(e)
+def set_state(state: str):
+    if not active: return
+    print(f'Setting state to {state}')
 
     for i in ids:
         client.publish(f'shellies/shelly1-{i}/relay/0/command', state)
+
+def get_state():
+    return 'on' if temperature < desired_temp else 'off'
+
+def update_clients():
+    set_state(get_state())
+
+def handle_set(message):
+    global desired_temp
+    try:
+        desired_temp = float(message.payload)
+        print(f'Got desired temperature: {desired_temp}')
+        update_clients()
+    except Error as e:
+        print(e)
+
+def handle_temperature_change(message):
+    global temperature
+    try:
+        temperature = float(message.payload)
+        print(f'Current temperature {temperature}')
+        update_clients()
+    except Error as e:
+        print(e)
+
+def handle(client, userdata, message):
+    if message.topic == 'temperature/set':
+        handle_set(message)
+    elif message.topic == 'temperature/inside':
+        handle_temperature_change(message)
 
 subscribe.callback(handle, ['temperature/inside', 'temperature/set'], hostname=url)
 
