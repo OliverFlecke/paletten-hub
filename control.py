@@ -12,10 +12,9 @@ client.connect(url, 1883, 60)
 
 desired_temp = None
 temperature = None
-active = True
+active = False
 
 def set_state(state: str):
-    if not active: return
     print(f'Setting state to {state}')
 
     for i in ids:
@@ -48,9 +47,14 @@ def handle_temperature_change(message):
 def handle_active_change(message):
     global active
     active = message.payload == b'true'
-    print(f'Automatic temperature control is now {"active" if active else "disabled"}')
+    print(f'Automatic temperature control is {"active" if active else "disabled"}')
+    if active:
+    	update_clients()
+    else:
+        set_state('off')
 
 def handle(client, userdata, message):
+    #print(f'Received at "{message.topic}": {message.payload}')
     if message.topic == 'temperature/set':
         handle_set(message)
     elif message.topic == 'temperature/inside':
