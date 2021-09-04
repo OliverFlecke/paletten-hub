@@ -20,3 +20,13 @@ def latest_reading(location: str) -> (int, int):
 		
 	return (None, None)
 
+def get_history_in_last_x_hours(location: str, hours: int):
+	hours_sql = f'-{hours} hour'
+	return con.cursor().execute("""
+		SELECT * FROM history
+		WHERE location = ?
+		AND timestamp > datetime('now', ?)
+		ORDER BY timestamp DESC
+		""",
+		(location, hours_sql))
+

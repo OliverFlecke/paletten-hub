@@ -5,4 +5,5 @@ CREATE TABLE history (
 	temperature INT NOT NULL,
 	humidity INT NOT NULL
 );
+CREATE INDEX history_timestamp_index on history (timestamp);
 
