@@ -4,7 +4,7 @@ import Adafruit_DHT
 import json
 from datetime import datetime
 import argparse
-from db import insert_reading, latest_reading, get_history_in_last_x_hours
+from db import insert_reading, latest_reading, history_without_duplicates
 
 parser = argparse.ArgumentParser(description='Send temperature data')
 parser.add_argument('place', type=str)
@@ -30,12 +30,6 @@ if args.force or last_humidity != humidity:
     client.publish(f'humidity/{args.place}', f'{humidity:0.1f}', retain=True)
 
 # Update broker with latest history
-history = json.dumps([
-	{ 
-		'time': row[0],
-		'temp': row[2], 
-		'hum': row[3],
-	} 
-	for row in get_history_in_last_x_hours('inside', 6)])
-client.publish(f'history/{args.place}', history, retain=True)
+history = history_without_duplicates(args.place, 24)
+client.publish(f'history/{args.place}', json.dumps(history), retain=True)
 
