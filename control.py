@@ -1,7 +1,9 @@
 #!/usr/bin/env python3.8
 import paho.mqtt.client as mqtt
-import paho.mqtt.subscribe as subscribe
 import sys
+import re
+import json
+from db import log_heater_state, get_heater_history_in_last_x_hours
 
 print('Starting control')
 
@@ -51,19 +53,40 @@ def handle_active_change(message):
     active = message.payload == b'true'
     print(f'Automatic temperature control is {"active" if active else "disabled"}')
     if active:
-    	update_clients()
+        update_clients()
     else:
         set_state('off')
 
-def handle(client, userdata, message):
-    #print(f'Received at "{message.topic}": {message.payload}')
+def handle_heater_state_change(message):
+    #print(f'Received state change at {message.topic}: {message.payload}')
+    m = re.match(r'shellies/shelly1-(?P<id>[A-F0-9]*)/relay/0', message.topic)
+    if not m:
+        print('Message topic does not match expected')
+        return
+
+    heater = m.group('id')
+    is_on = message.payload == b'on'
+    log_heater_state(heater, is_on)
+    
+    history = get_heater_history_in_last_x_hours(heater, 24)
+    client.publish(f'history/heater/{heater}', json.dumps(history), retain=True)
+
+def on_message(client, userdata, message):
     if message.topic == 'temperature/set':
         handle_set(message)
     elif message.topic == 'temperature/inside':
         handle_temperature_change(message)
     elif message.topic == 'temperature/auto':
         handle_active_change(message)
+    elif message.topic.startswith('shellies'):
+        handle_heater_state_change(message)
+    else:
+        print(f'Unhandled message received at "{message.topic}": {message.payload}')
 
-subscribe.callback(handle, ['temperature/inside', 'temperature/set', 'temperature/auto'], hostname=url)
+client.on_message = on_message
+
+topics = ['shellies/+/relay/0', 'temperature/inside', 'temperature/set', 'temperature/auto']
+client.subscribe(list(map(lambda topic: (topic, 1), topics)))
+
 client.loop_forever()
 
