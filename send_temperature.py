@@ -16,13 +16,13 @@ args = parser.parse_args()
 url = 'paletten.oliverflecke.me'
 port = 1883
 
-client = mqtt.Client()
-client.connect(url, port, 60)
-
 last_temp, last_humidity = latest_reading(args.place)
 
 humidity, temperature = Adafruit_DHT.read_retry(11, args.pin)
 insert_reading(args.place, temperature, humidity)
+
+client = mqtt.Client()
+client.connect(url, port, 60)
 
 if args.force or last_temp != temperature:
     client.publish(f'temperature/{args.place}', f'{temperature:0.1f}', retain=True)
